@@ -8,9 +8,8 @@ if !token
   return
 bot = new TelegramBot token, {polling: true}
 console.log 'Started'
-savedBingos = fs.readFileSync 'bingos.json', 'utf8'
-currentBingos = savedBingos && JSON.parse savedBingos || {}
-console.log "current Bingos: #{currentBingos}"
+currentBingos = if fs.existsSync('bingos.json') then JSON.parse fs.readFileSync 'bingos.json', 'utf8' else {}
+console.log "current Bingos: #{JSON.stringify(currentBingos)}"
 
 bot.on 'message', (msg) ->
   if !msg.text
@@ -25,19 +24,18 @@ bot.on 'message', (msg) ->
 
 processCommand = (msg) ->
   chatId = msg.chat.id
-  split = msg.text.split ' '
-  # isSquare = (n) => Math.floor(Math.sqrt(n)) === Math.sqrt(n)
-  # argsLength = split.length - 2
-  # if (!isSquare(argsLength)) {
-  #     bot.sendMessage(chatId, `Sorry, cannot create bingo with ${argsLength} elems. Please provide 4, 9, 16... elems`)
-  #     return
-  # }
+  [command, bingoName, bingos...] = msg.text.split ' '
+  isSquare = (n) -> (Math.floor Math.sqrt n) == Math.sqrt n
+  if !isSquare bingos.length
+    bot.sendMessage chatId, "Sorry, cannot create bingo with #{bingos.length} elems. Please provide 4, 9, 16... elems"
+    return
 
-  bingoName = split[1]
-  if currentBingos[bingoName]
+  if currentBingos[chatId] and currentBingos[chatId][bingoName]
     bot.sendMessage chatId, 'Sorry, cannot create bingo with existing name. Please provide different name'
     return
-  currentBingos[bingoName] = split.slice 2
+  if (!currentBingos[chatId])
+    currentBingos[chatId] = {}
+  currentBingos[chatId][bingoName] = bingos
   bot.sendMessage chatId, "New Bingo (#{bingoName}) Added!"
   console.log currentBingos
 
@@ -45,12 +43,12 @@ processText = (msg) ->
   chatId = msg.chat.id
   strings = msg.text.split(' ')
   for word in strings
-    for key of currentBingos
-      currentBingos[key] = currentBingos[key].filter (val) -> val.toLowerCase() != word.toLowerCase()
+    for key of currentBingos[chatId]
+      currentBingos[chatId][key] = currentBingos[chatId][key].filter (key) -> key.toLowerCase() != word.toLowerCase()
 
-  for key of currentBingos
-      if currentBingos[key].length == 0
-        bot.sendMessage chatId, "Bingo for #{key}!!! You're the lucky one!"
-        delete currentBingos[key]
+  for key of currentBingos[chatId]
+    if currentBingos[chatId][key].length == 0
+      bot.sendMessage chatId, "Bingo for #{key}!!! You're the lucky one!"
+      delete currentBingos[chatId][key]
 
 setInterval (() -> fs.writeFile 'bingos.json', JSON.stringify(currentBingos), 'utf8', () => {}), 1000
