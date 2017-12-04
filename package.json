@@ -1,0 +1,13 @@
+{
+  "name": "BullshitBingoBot",
+  "version": "0.0.1",
+  "dependencies": {
+    "fs": "*",
+    "node-telegram-bot-api": "*",
+    "coffee-script": "*"
+  },
+  "scripts": {
+    "compile": "coffee -c app.coffee",
+    "start": "npm run compile & node app"
+  }
+}
