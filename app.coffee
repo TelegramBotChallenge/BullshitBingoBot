@@ -1,7 +1,6 @@
 TelegramBot = require 'node-telegram-bot-api'
 fs = require 'fs'
 
-console.log 'Coffee is started! Yay!'
 token = fs.readFileSync 'token.txt', 'utf8'
 if !token
   console.log 'Please provide token.txt file'
@@ -35,20 +34,59 @@ processCommand = (msg) ->
     return
   if (!currentBingos[chatId])
     currentBingos[chatId] = {}
-  currentBingos[chatId][bingoName] = bingos
+  currentBingos[chatId][bingoName] = new Matrix (bingos.map (s) -> s.toLowerCase()), (bingos.map () -> false), Math.sqrt(bingos.length)
   bot.sendMessage chatId, "New Bingo (#{bingoName}) Added!"
-  console.log currentBingos
 
 processText = (msg) ->
   chatId = msg.chat.id
   strings = msg.text.split(' ')
   for word in strings
     for key of currentBingos[chatId]
-      currentBingos[chatId][key] = currentBingos[chatId][key].filter (key) -> key.toLowerCase() != word.toLowerCase()
-
-  for key of currentBingos[chatId]
-    if currentBingos[chatId][key].length == 0
-      bot.sendMessage chatId, "Bingo for #{key}!!! You're the lucky one!"
-      delete currentBingos[chatId][key]
+      checked = fill currentBingos[chatId][key], word
+      if (checked)
+        bot.sendMessage chatId, "Bingo for #{key}!!! You're the lucky one!"
+        delete currentBingos[chatId][key]
 
 setInterval (() -> fs.writeFile 'bingos.json', JSON.stringify(currentBingos), 'utf8', () => {}), 1000
+
+class Matrix
+  constructor: (@arr, @filled, @n) ->
+
+fill = (matrix, word) ->
+  index = matrix.arr.indexOf word.toLowerCase()
+  if index >= 0
+    matrix.filled[index] = true
+    return checkIndex matrix, index
+  return false
+
+checkIndex = (matrix, index) ->
+  row = Math.floor (index / matrix.n)
+  column = index % matrix.n
+
+  result = true
+  for i in [0..matrix.n - 1]
+    result &&= matrix.filled[matrix.n * i + column]
+  if result == true
+    return result
+
+  result = true
+  for i in [0..matrix.n - 1]
+    result &&= matrix.filled[matrix.n * row + i]
+  if result == true
+    return result
+
+  if row == column
+    result = true
+    for i in [0..matrix.n - 1]
+      result &&= matrix.filled[matrix.n * i + i]
+    if result == true
+      return result
+
+  if row = matrix.n - column - 1
+    result = true
+    for i in [0..matrix.n - 1]
+      result &&= matrix.filled[matrix.n * i + (matrix.n - i - 1)]
+    if result == true
+      return result
+
+  return false
