@@ -14,7 +14,7 @@ bot.on 'message', (msg) ->
   if !msg.text
     return
   text = msg.text
-  if text.match /\/create_bingo (\w+) (\w+)( \w+)*/
+  if (text.startsWith '/bullshit_bingo' or text.startsWith '/create_bingo') and (text.split ' ').length > 2
     processCommand msg
   else if !text.startsWith '/'
     processText msg
